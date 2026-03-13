@@ -1,0 +1,27 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# OS files
+desktop.ini
+.DS_Store
+
+# Experiment artifacts
+checkpoints/
+results/
+
+# Runtime logs
+logs/*.log
+
+# VS Code local settings
+.vscode/
