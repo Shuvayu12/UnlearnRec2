@@ -103,6 +103,15 @@ def ParseArgs():
 	parser.add_argument('--act', default='leaky', type=str, help='activation function for unlearnning fine-tune part')
 	parser.add_argument('--layer_mlp', default=2, type=int, help='layer num for mlp (e.g., unlearning fine-tuning part)')
 	parser.add_argument('--leaky', default=0.99, type=float, help='slope for the negative part of leaky relu')
+
+	# Encoder type for graph unlearning
+	parser.add_argument('--encoder_type', default='default', type=str,
+		choices=['default', 'autoencoder', 'attention', 'hypernet', 'causal'],
+		help='influence encoder architecture: default | autoencoder | attention | hypernet | causal')
+	parser.add_argument('--lambda_rec', default=1e-3, type=float,
+		help='weight for autoencoder adjacency reconstruction loss')
+	parser.add_argument('--lambda_causal', default=1e-3, type=float,
+		help='weight for causal consistency loss')
     
 	# parser.add_argument('--keepRate', default=1.0, type=float, help='ratio of edges to keep')
      

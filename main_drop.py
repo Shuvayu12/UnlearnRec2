@@ -16,6 +16,7 @@ import random
 class Coach:
     def __init__(self, handler):
         self.handler = handler
+        self.latest_unlearn_stats = {}
 
         print('NUM OF NODES', args.user + args.item)
         print('NUM OF EDGES', self.handler.trn_loader.dataset.__len__())
@@ -98,6 +99,14 @@ class Coach:
         reses = self.tst_epoch(self.model)
         log(self.make_print('Tst', args.epoch, reses, True))
 
+                    final_gap = self.test_unlearn(self.model, prefix='Final evaluation:')
+                    mi_bf = self.latest_unlearn_stats.get('mi_bf', float('nan'))
+                    mi_ng = self.latest_unlearn_stats.get('mi_ng', float('nan'))
+                    print(
+                        f"FINAL_METRICS|encoder={args.encoder_type}|recall={reses['Recall']:.6f}|"
+                        f"ndcg={reses['NDCG']:.6f}|mi_bf={mi_bf:.6f}|mi_ng={mi_ng:.6f}|gap={final_gap:.6f}"
+                    )
+
     
     def prepare_model(self):
         trained_model = self.load_trained_model()
@@ -119,7 +128,7 @@ class Coach:
         fnl_uEmbeds, fnl_iEmbeds = trained_model.forward(self.handler.ts_ori_adj, keepRate=1.0) 
         fnl_embeds = t.concat([fnl_uEmbeds.detach(), fnl_iEmbeds.detach()], axis=0).detach()
 
-        self.model = GraphUnlearning(self.handler, trained_model,  ini_embeds.detach(), fnl_embeds.detach() ).cuda()
+        self.model = build_unlearning_encoder(self.handler, trained_model,  ini_embeds.detach(), fnl_embeds.detach() ).cuda()
 
         self.opt = t.optim.Adam(self.model.parameters(), lr=args.lr, weight_decay=0)
 
@@ -272,6 +281,21 @@ class Coach:
         print(f"Pretraining for Unlearning: Positive edges scores (mean, var, max, min):           <{our_pos_res.mean().item():0.4f}, {our_pos_res.var().item():0.4f}, {our_pos_res.max().item():0.4f}, {our_pos_res.min().item():0.4f}>   |    Before unlearning: Positive edges scores:          <{pretr_pos_res.mean().item():0.4f},{pretr_pos_res.var().item():0.4f},{pretr_pos_res.max().item():0.4f},{pretr_pos_res.min().item():0.4f}>")
         print(f"Pretraining for Unlearning: Negative edges scores (mean, var, max, min):           <{our_neg_res.mean().item():0.4f}, {our_neg_res.var().item():0.4f}, {our_neg_res.max().item():0.4f}, {our_neg_res.min().item():0.4f}>   |    Before unlearning: Negative edges scores:          <{pretr_neg_res.mean().item():0.4f},{pretr_neg_res.var().item():0.4f},{pretr_neg_res.max().item():0.4f},{pretr_neg_res.min().item():0.4f}>")
         print("##########################################################################################################################################################################")
+
+        eps = 1e-10
+        before_drop_mean = pretr_drp_res.mean().item()
+        after_drop_mean = our_drp_res.mean().item()
+        neg_mean = our_neg_res.mean().item()
+        mi_bf = (before_drop_mean + eps) / (after_drop_mean + eps)
+        mi_ng = (neg_mean + eps) / (after_drop_mean + eps)
+        self.latest_unlearn_stats = {
+            'before_drop_mean': before_drop_mean,
+            'after_drop_mean': after_drop_mean,
+            'neg_mean': neg_mean,
+            'mi_bf': mi_bf,
+            'mi_ng': mi_ng,
+        }
+        print(f"Unlearning metrics: MI-BF={mi_bf:0.6f}, MI-NG={mi_ng:0.6f}")
         
         return  our_neg_res.mean().item() - our_drp_res.mean().item()
 
